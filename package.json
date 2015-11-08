@@ -1,6 +1,6 @@
 {
   "name": "@mona/core",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Core parsers for mona",
   "main": "lib/index.js",
   "scripts": {
