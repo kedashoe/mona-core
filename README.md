@@ -1,4 +1,4 @@
-# mona-internals  [![Travis](https://img.shields.io/travis/zkat/dynvar.svg)]() [![npm version](https://img.shields.io/npm/v/dynvar.svg)]() [![license](https://img.shields.io/npm/l/dynvar.svg)]()
+# mona-core  [![Travis](https://img.shields.io/travis/zkat/mona-core.svg)]() [![npm version](https://img.shields.io/npm/v/mona-core.svg)]() [![license](https://img.shields.io/npm/l/mona-core.svg)]()
 
-[mona-internals](https://github.com/zkat/mona-internals) provides basic internal functionality for [mona](https://github.com/zkat/mona).
+[mona-core](https://github.com/zkat/mona-core) contains the core parsers for [mona](https://github.com/zkat/mona).
 
