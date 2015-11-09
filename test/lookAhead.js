@@ -2,7 +2,7 @@
 var assert = require('assert')
 var core = require('..')
 var comb = require('@mona/combinators')
-var parse = require('@mona/parse')
+var parse = require('@mona/parse').parse
 var strings = require('@mona/strings')
 
 describe('lookAhead()', function () {

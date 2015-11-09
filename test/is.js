@@ -1,7 +1,7 @@
 /* global describe, it */
 var assert = require('assert')
 var core = require('..')
-var parse = mona.parse
+var parse = require('@mona/parse').parse
 
 describe('is()', function () {
   it('parses a token matching a predicate', function () {

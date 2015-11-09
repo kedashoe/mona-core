@@ -1,7 +1,7 @@
 /* global describe, it */
 var assert = require('assert')
 var core = require('..')
-var parse = require('@mona/parse')
+var parse = require('@mona/parse').parse
 
 describe('label()', function () {
   it('replaces any error messages with an expectation', function () {

@@ -1,7 +1,7 @@
 /* global describe, it */
 var assert = require('assert')
 var core = require('..')
-var parse = require('@mona/parse')
+var parse = require('@mona/parse').parse
 
 describe('fail()', function () {
   it('fails the parse with the given message', function () {
