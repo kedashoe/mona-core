@@ -1,4 +1,4 @@
-import {copy, invokeParser, mergeErrors, ParserError} from '@mona/internals'
+import {invokeParser, ParserError} from '@mona/internals'
 
 /**
  * Core parsers
@@ -27,7 +27,7 @@ import {copy, invokeParser, mergeErrors, ParserError} from '@mona/internals'
  */
 export function value (val) {
   return parserState => {
-    let newState = copy(parserState)
+    let newState = parserState.copy()
     newState.value = val
     return newState
   }
@@ -49,13 +49,15 @@ export function value (val) {
  */
 export function bind (parser, fun) {
   return parserState => {
-    const newParserState = invokeParser(parser, parserState)
-    if (newParserState.failed) {
-      return newParserState
-    } else {
-      return fun.call(newParserState.userState,
-                      newParserState.value)(newParserState)
-    }
+    return invokeParser(parser, parserState).then(newParserState => {
+      if (newParserState.failed) {
+        return newParserState
+      } else {
+        return invokeParser(
+          fun.call(newParserState.userState, newParserState.value),
+          newParserState)
+      }
+    })
   }
 }
 
@@ -70,11 +72,13 @@ export function bind (parser, fun) {
  */
 export function fail (msg = 'parser error', type = 'failure') {
   return function (parserState) {
-    let newParserState = copy(parserState)
+    let newParserState = parserState.copy()
     newParserState.failed = true
     var newError = new ParserError(newParserState.position, [msg],
                                    type, type === 'eof')
-    newParserState.error = mergeErrors(newParserState.error, newError)
+    newParserState.error = parserState.error
+      ? parserState.error.merge(newError)
+      : newError
     return newParserState
   }
 }
@@ -96,7 +100,7 @@ export function label (parser, msg) {
   return parserState => {
     let newState = invokeParser(parser, parserState)
     if (newState.failed) {
-      newState = copy(newState)
+      newState = newState.copy()
       newState.error = new ParserError(newState.error.position,
                                        ['expected ' + msg],
                                        'expectation',
@@ -123,8 +127,8 @@ export function token (count) {
     const input = parserState.input
     const offset = parserState.offset
     const newOffset = offset + count
-    let newParserState = copy(parserState)
-    let newPosition = copy(parserState.position)
+    let newParserState = newParserState.copy()
+    let newPosition = parserState.position.copy()
     newParserState.position = newPosition
     for (let i = offset; i < newOffset && input.length >= i; i++) {
       if (input.charAt(i) === '\n') {
