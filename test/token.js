@@ -1,38 +1,49 @@
 /* global describe, it */
 var assert = require('assert')
 var core = require('..')
-var parse = require('@mona/parse').parse
-var comb = require('@mona/combinators')
+var parse = core.parse
+var reject = Promise.reject.bind(Promise)
 
 describe('token()', function () {
   it('consumes one character from the input and returns it', function () {
-    assert.equal(parse(core.token(), 'a'), 'a')
-    assert.equal(parse(comb.and(core.token(), core.token()), 'ab'), 'b')
+    return parse(core.token(), 'a').then(function (tok) {
+      assert.equal(tok, 'a')
+    }).then(function () {
+      return parse(core.bind(core.token(), function (a) {
+        return core.token()
+      }), 'ab')
+    }).then(function (tok) {
+      assert.equal(tok, 'b')
+    })
   })
   it('optionally accepts a count of items to consume', function () {
-    assert.equal(parse(core.token(5), 'abcde'), 'abcde')
+    return parse(core.token(5), 'abcde').then(function (val) {
+      assert.equal(val, 'abcde')
+    })
   })
   it('fails if there is no more input', function () {
-    assert.throws(function () {
-      parse(core.token(), '')
-    }, /(line 1, column 1)/)
-    assert.throws(function () {
-      parse(comb.and(core.token(), core.token()), 'a')
-    }, /(line 1, column 2)/)
-    assert.throws(function () {
-      parse(comb.and(core.token(5)), 'abcd')
-    }, /(line 1, column 5)/)
+    var ps = []
+    ps.push(parse(core.token(), '').then(reject, function (e) {
+      assert.ok(/(line 1, column 1)/.test(e.message))
+    }))
+    ps.push(parse(core.bind(core.token(), function () {
+      return core.token()
+    }), 'a').then(reject, function (e) {
+      assert.ok(/(line 1, column 2)/.test(e.message))
+    }))
+    ps.push(parse(core.token(5), 'abcd').then(reject, function (e) {
+      assert.ok(/(line 1, column 5)/.test(e.message))
+    }))
+    return Promise.all(ps)
   })
   it('reports the error as "unexpected eof" if it fails', function () {
-    assert.throws(function () {
-      parse(core.token(), '')
-    }, /unexpected eof/)
+    return parse(core.token(), '').then(reject, function (e) {
+      assert.ok(/unexpected eof/.test(e.message))
+    })
   })
   it('reports the error type as "eof"', function () {
-    assert.throws(function () {
-      parse(core.token(), '')
-    }, function (err) {
-      return err.type === 'eof'
+    return parse(core.token(), '').then(reject, function (e) {
+      assert.equal(e.type, 'eof')
     })
   })
 })

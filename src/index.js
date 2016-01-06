@@ -1,5 +1,3 @@
-import {invokeParser, ParserError} from '@mona/internals'
-
 /**
  * Core parsers
  *
@@ -7,13 +5,54 @@ import {invokeParser, ParserError} from '@mona/internals'
  */
 
 /**
- * A function accepting parserState as input that transforms it and returns a
- * new parserState.
- * @callback {Function} Parser
- * @param {ParserState} state - Current parser state.
- * @returns {ParserState} state' - Transformed parser state.
- * @memberof module:mona/core
+ * Executes a parser and returns the resulting promise.
+ *
+ * @param {Function} parser - The parser to execute.
+ * @param {String} string - Source to parse from.
+ * @param {Object} [opts] - Options object.
+ * @param {String} [opts.fileName] - filename to use for error messages.
+ * @memberof module:mona/api
+ * @instance
+ *
+ * @example
+ * parse(token(), 'a') // => 'a'
  */
+export function parse (parser, string, opts = {}) {
+  if (!opts.allowTrailing) {
+    parser = bind(parser, result =>
+      bind(eof(), () => value(result)))
+  }
+  return invokeParser(
+    parser,
+    new ParserState(undefined,
+                    string,
+                    0,
+                    opts.userState,
+                    opts.position || new SourcePosition(opts.fileName),
+                    false)
+  ).then(parserState => {
+    if (opts.returnState) {
+      return parserState
+    } else if (parserState.failed) {
+      throw parserState.error
+    } else {
+      return parserState.value
+    }
+  })
+}
+
+function invokeParser (parser, parserState) {
+  return Promise.resolve(parserState).then(parserState => {
+    if (typeof parser !== 'function') {
+      throw new Error('Parser needs to be a function, but got ' +
+      parser + ' instead')
+    }
+    if (!parserState.isParserState) {
+      throw new Error('parserState must be a ParserState')
+    }
+    return parser(parserState)
+  })
+}
 
 /**
  * Returns a parser that always succeeds without consuming input.
@@ -98,15 +137,16 @@ export function fail (msg = 'parser error', type = 'failure') {
  */
 export function label (parser, msg) {
   return parserState => {
-    let newState = invokeParser(parser, parserState)
-    if (newState.failed) {
-      newState = newState.copy()
-      newState.error = new ParserError(newState.error.position,
-                                       ['expected ' + msg],
-                                       'expectation',
-                                       newState.error.wasEof)
-    }
-    return newState
+    return invokeParser(parser, parserState).then(newState => {
+      if (newState.failed) {
+        newState = newState.copy()
+        newState.error = new ParserError(newState.error.position,
+          ['expected ' + msg],
+          'expectation',
+          newState.error.wasEof)
+      }
+      return newState
+    })
   }
 }
 
@@ -123,11 +163,12 @@ export function label (parser, msg) {
  */
 export function token (count) {
   count = count || 1 // force 0 to 1, as well.
+  // TODO - move input-bumping into the ParserState class.
   return parserState => {
     const input = parserState.input
     const offset = parserState.offset
     const newOffset = offset + count
-    let newParserState = newParserState.copy()
+    let newParserState = parserState.copy()
     let newPosition = parserState.position.copy()
     newParserState.position = newPosition
     for (let i = offset; i < newOffset && input.length >= i; i++) {
@@ -199,9 +240,10 @@ export function delay (constructor, ...args) {
  */
 export function log (parser, tag, level = 'log') {
   return parserState => {
-    var newParserState = invokeParser(parser, parserState)
-    console[level](tag + ' :: ', parserState, ' => ', newParserState)
-    return newParserState
+    return invokeParser(parser, parserState).then(newParserState => {
+      console[level](tag + ' :: ', parserState, ' => ', newParserState)
+      return newParserState
+    })
   }
 }
 
@@ -260,10 +302,11 @@ export function tag (parser, key) {
  */
 export function lookAhead (parser) {
   return parserState => {
-    let newState = invokeParser(parser, parserState)
-    newState.offset = parserState.offset
-    newState.position = parserState.position
-    return newState
+    return invokeParser(parser, parserState).then(newState => {
+      newState.offset = parserState.offset
+      newState.position = parserState.position
+      return newState
+    })
   }
 }
 
@@ -280,7 +323,9 @@ export function lookAhead (parser) {
  * parse(is(function(x) { return x === 'a' }), 'a') // => 'a'
  */
 export function is (predicate, parser = token()) {
-  return bind(parser, x => predicate(x) ? value(x) : fail())
+  return bind(parser, x => {
+    return predicate(x) ? value(x) : fail('predicate check failed')
+  })
 }
 
 /**
@@ -297,4 +342,117 @@ export function is (predicate, parser = token()) {
  */
 export function isNot (predicate, parser) {
   return is(x => !predicate(x), parser)
+}
+
+/*
+ * Utility classes
+ */
+
+class ParserState {
+  constructor (value, input, offset, userState,
+               position, hasConsumed, error, failed) {
+    this.value = value
+    this.input = input
+    this.offset = offset
+    this.position = position
+    this.userState = userState
+    this.failed = failed
+    this.error = error
+  }
+  copy () {
+    return new ParserState(this.value,
+                           this.input,
+                           this.offset,
+                           this.userState,
+                           this.position,
+                           this.hasConsumed,
+                           this.error,
+                           this.failed)
+  }
+}
+ParserState.prototype.isParserState = true
+
+/**
+ * Represents a source location.
+ * @typedef {Object} SourcePosition
+ * @property {String} name - Optional sourcefile name.
+ * @property {Integer} line - Line number, starting from 1.
+ * @property {Integer} column - Column number in the line, starting from 1.
+ * @memberof module:mona/api
+ * @instance
+ */
+class SourcePosition {
+  constructor (name, line, column) {
+    this.name = name
+    this.line = line || 1
+    this.column = column || 0
+  }
+  copy () {
+    return new SourcePosition(this.name, this.line, this.column)
+  }
+}
+
+/**
+ * Information about a parsing failure.
+ * @typedef {Object} ParserError
+ * @property {api.SourcePosition} position - Source position for the error.
+ * @property {Array} messages - Array containing relevant error messages.
+ * @property {String} type - The type of parsing error.
+ * @memberof module:mona/api
+ */
+class ParserError extends Error {
+  constructor (pos, messages, type, wasEof) {
+    super()
+    if (Error.captureStackTrace) {
+      // For pretty-printing errors on node.
+      Error.captureStackTrace(this, this)
+    }
+    this.position = pos
+    this.messages = messages
+    this.type = type
+    this.wasEof = wasEof
+    this.message = ('(line ' + this.position.line +
+                    ', column ' + this.position.column + ') ' +
+                    this.messages.join('\n'))
+  }
+  merge (err2) {
+    const err1 = this
+    if (!err1 || (!err1.messages.length && err2.messages.length)) {
+      return err2
+    } else if (!err2 || (!err2.messages.length && err1.messages.length)) {
+      return err1
+    } else {
+      switch (comparePositions(err1.position, err2.position)) {
+        case 'gt':
+          return err1
+        case 'lt':
+          return err2
+        case 'eq':
+          var newMessages =
+            (err1.messages.concat(err2.messages)).reduce((acc, x) => {
+              return (~acc.indexOf(x)) ? acc : acc.concat([x])
+            }, [])
+          return new ParserError(err2.position,
+                                 newMessages,
+                                 err2.type,
+                                 err2.wasEof || err1.wasEof)
+        default:
+          throw new Error('This should never happen')
+      }
+    }
+  }
+}
+
+function comparePositions (pos1, pos2) {
+  if (pos1.line < pos2.line) {
+    return 'lt'
+  } else if (pos1.line > pos2.line) {
+    return 'gt'
+  } else if (pos1.column < pos2.column) {
+    return 'lt'
+  } else if (pos1.column > pos2.column) {
+    return 'gt'
+  } else {
+    return 'eq'
+  }
 }

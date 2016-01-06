@@ -1,25 +1,31 @@
 /* global describe, it */
 var assert = require('assert')
 var core = require('..')
-var parse = require('@mona/parse').parse
+var parse = core.parse
 
 describe('isNot()', function () {
-  it('parses a token matching a predicate', function () {
+  it('parses a token failing a predicate', function () {
     var parser = core.isNot(function (t) {
-      return t !== '\n'
+      return t === 'a'
     })
-    assert.equal(parse(parser, '\n'), '\n')
-    assert.throws(function () {
-      parse(parser, '\r')
+    return parse(parser, 'b').then(function (x) {
+      assert.equal(x, 'b')
     })
   })
-  it('run the predicate on the result of an arbitrary paresr', function () {
+  it('fails if the predicate matches', function () {
+    var parser = core.isNot(function (t) {
+      return t === 'a'
+    })
+    return parse(parser, 'a').then(Promise.reject.bind(Promise), function (e) {
+      assert.ok(/predicate check failed/.test(e.message))
+    })
+  })
+  it('runs the predicate on the result of an arbitrary parser', function () {
     var parser = core.isNot(function (x) {
-      return x === 'f'
-    }, core.token())
-    assert.equal(parse(parser, 'b'), 'b')
-    assert.throws(function () {
-      parse(parser, 'f')
+      return x === 'a'
+    }, core.value('b'))
+    return parse(parser, '').then(function (res) {
+      assert.equal(res, 'b')
     })
   })
 })

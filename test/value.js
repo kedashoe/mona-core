@@ -1,18 +1,22 @@
 /* global describe, it */
 var assert = require('assert')
 var core = require('..')
-var parse = require('@mona/parse').parse
-var comb = require('@mona/combinators')
+var parse = core.parse
 
 describe('value()', function () {
   it('parses to the given value', function () {
-    assert.equal(parse(core.value('foo'), ''), 'foo')
+    return parse(core.value('foo'), '').then(function (val) {
+      assert.equal(val, 'foo')
+    })
   })
   it('does not consume input', function () {
-    assert.equal(
-      parse(
-        comb.followedBy(core.value('foo'), core.token()),
-        'a'),
-      'foo')
+    return parse(core.value('x'), 'a', {
+      allowTrailing: true,
+      returnState: true
+    }).then(function (s) {
+      assert.equal(s.value, 'x')
+      assert.equal(s.position.line, 1)
+      assert.equal(s.position.column, 0)
+    })
   })
 })

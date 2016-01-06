@@ -1,31 +1,31 @@
 /* global describe, it */
 var assert = require('assert')
 var core = require('..')
-var parse = require('@mona/parse').parse
+var parse = core.parse
+var reject = Promise.reject.bind(Promise)
 
 describe('fail()', function () {
   it('fails the parse with the given message', function () {
-    assert.throws(function () {
-      parse(core.fail('hi'), 'abc')
-    }, /hi/)
+    return parse(core.fail('hi'), 'abc').then(reject, function (e) {
+      assert.equal(e.message, '(line 1, column 0) hi')
+    })
   })
   it('uses "parser error" as the message if none is given', function () {
-    assert.throws(function () {
-      parse(core.fail(), '')
-    }, /parser error/)
+    return parse(core.fail(), '').then(reject, function (e) {
+      assert.equal(e.message, '(line 1, column 0) parser error')
+    })
   })
   it('accepts a type argument used by the ParserError object', function () {
-    assert.throws(function () {
-      parse(core.fail('hi', 'criticalExplosion'), 'abc')
-    }, function (err) {
-      return err.type === 'criticalExplosion'
+    return parse(
+      core.fail('hi', 'criticalExplosion'),
+      'abc'
+    ).then(reject, function (e) {
+      assert.equal(e.type, 'criticalExplosion')
     })
   })
   it('uses "failure" as the default error type', function () {
-    assert.throws(function () {
-      parse(core.fail(), '')
-    }, function (err) {
-      return err.type === 'failure'
+    return parse(core.fail(), '').then(reject, function (e) {
+      assert.equal(e.type, 'failure')
     })
   })
 })
