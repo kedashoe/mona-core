@@ -2,13 +2,14 @@
 var assert = require('assert')
 var core = require('..')
 var parse = core.parse
+var reject = require('bluebird').reject
 
 describe('delay()', function () {
   it('delays calling a parser constructor until parse-time', function () {
     var parser = core.delay(function () {
       throw new Error('Parser explosion')
     })
-    return parse(parser, '').then(Promise.reject.bind(Promise), function (e) {
+    return parse(parser, '').then(reject, function (e) {
       assert.ok(/Parser explosion/.test(e.message))
     })
   })

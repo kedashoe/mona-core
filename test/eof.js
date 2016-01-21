@@ -2,6 +2,7 @@
 var assert = require('assert')
 var core = require('..')
 var parse = core.parse
+var reject = require('bluebird').reject
 
 describe('eof()', function () {
   it('succeeds with true if we\'re out of input', function () {
@@ -13,7 +14,7 @@ describe('eof()', function () {
     return parse(
       core.eof(),
       'a'
-    ).then(Promise.reject.bind(Promise), function (e) {
+    ).then(reject, function (e) {
       assert.ok(/expected end of input/.test(e.message))
     })
   })

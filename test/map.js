@@ -2,6 +2,7 @@
 var assert = require('assert')
 var core = require('..')
 var parse = core.parse
+var reject = require('bluebird').reject
 
 describe('map()', function () {
   it('transforms a parser\'s result', function () {
@@ -14,7 +15,7 @@ describe('map()', function () {
   it('does not call function if the parser fails', function () {
     return parse(core.map(function (x) {
       throw x
-    }, core.token()), '').then(Promise.reject.bind(Promise), function (e) {
+    }, core.token()), '').then(reject, function (e) {
       assert.ok(/unexpected eof/.test(e.message))
     })
   })

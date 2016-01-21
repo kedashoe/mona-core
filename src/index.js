@@ -1,3 +1,5 @@
+import bluebird from 'bluebird'
+
 /**
  * Core parsers
  *
@@ -42,7 +44,7 @@ export function parse (parser, string, opts = {}) {
 }
 
 export function invokeParser (parser, parserState) {
-  return Promise.resolve(parserState).then(parserState => {
+  return bluebird.resolve(parserState).then(parserState => {
     if (typeof parser !== 'function') {
       throw new Error('Parser needs to be a function, but got ' +
       parser + ' instead')

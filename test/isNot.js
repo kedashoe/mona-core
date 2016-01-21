@@ -2,6 +2,7 @@
 var assert = require('assert')
 var core = require('..')
 var parse = core.parse
+var reject = require('bluebird').reject
 
 describe('isNot()', function () {
   it('parses a token failing a predicate', function () {
@@ -16,7 +17,7 @@ describe('isNot()', function () {
     var parser = core.isNot(function (t) {
       return t === 'a'
     })
-    return parse(parser, 'a').then(Promise.reject.bind(Promise), function (e) {
+    return parse(parser, 'a').then(reject, function (e) {
       assert.ok(/predicate check failed/.test(e.message))
     })
   })

@@ -2,7 +2,7 @@
 var assert = require('assert')
 var core = require('..')
 var parse = core.parse
-var reject = Promise.reject.bind(Promise)
+var reject = require('bluebird').reject
 
 describe('bind()', function () {
   it('calls a function with the result of a parser', function () {

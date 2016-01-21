@@ -2,6 +2,7 @@
 var assert = require('assert')
 var core = require('..')
 var parse = core.parse
+var reject = require('bluebird').reject
 
 describe('lookAhead()', function () {
   it('returns a parser\'s value without consuming input', function () {
@@ -15,7 +16,7 @@ describe('lookAhead()', function () {
   it('passes on a failure', function () {
     return parse(core.lookAhead(core.fail('oops')), 'a', {
       allowTrailing: true
-    }, 'a').then(Promise.reject.bind(Promise), function (e) {
+    }, 'a').then(reject, function (e) {
       assert.ok(/oops/.test(e.message))
     })
   })

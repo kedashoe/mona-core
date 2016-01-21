@@ -2,7 +2,8 @@
 var assert = require('assert')
 var core = require('..')
 var parse = core.parse
-var reject = Promise.reject.bind(Promise)
+var bluebird = require('bluebird')
+var reject = bluebird.reject
 
 describe('token()', function () {
   it('consumes one character from the input and returns it', function () {
@@ -34,7 +35,7 @@ describe('token()', function () {
     ps.push(parse(core.token(5), 'abcd').then(reject, function (e) {
       assert.ok(/(line 1, column 5)/.test(e.message))
     }))
-    return Promise.all(ps)
+    return bluebird.all(ps)
   })
   it('reports the error as "unexpected eof" if it fails', function () {
     return parse(core.token(), '').then(reject, function (e) {
