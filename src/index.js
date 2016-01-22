@@ -400,9 +400,8 @@ class SourcePosition {
  * @property {String} type - The type of parsing error.
  * @memberof module:mona/api
  */
-class ParserError extends Error {
+class ParserError {
   constructor (pos, messages, type, wasEof) {
-    super()
     if (Error.captureStackTrace) {
       // For pretty-printing errors on node.
       Error.captureStackTrace(this, this)
