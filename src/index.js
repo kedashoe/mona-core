@@ -24,15 +24,13 @@ export function parse (parser, string, opts = {}) {
     parser = bind(parser, result =>
       bind(eof(), () => value(result)))
   }
-  return invokeParser(
-    parser,
-    new ParserState(undefined,
-                    string,
-                    0,
-                    opts.userState,
-                    opts.position || new SourcePosition(opts.fileName),
-                    false)
-  ).then(parserState => {
+  let state = opts.state || new ParserState(undefined,
+    string,
+    0,
+    opts.userState,
+    opts.position || new SourcePosition(opts.fileName),
+    false)
+  return state.parse(parser).then(parserState => {
     if (opts.returnState) {
       return parserState
     } else if (parserState.failed) {
@@ -40,19 +38,6 @@ export function parse (parser, string, opts = {}) {
     } else {
       return parserState.value
     }
-  })
-}
-
-export function invokeParser (parser, parserState) {
-  return bluebird.resolve(parserState).then(parserState => {
-    if (typeof parser !== 'function') {
-      throw new Error('Parser needs to be a function, but got ' +
-      parser + ' instead')
-    }
-    if (!parserState.isParserState) {
-      throw new Error('parserState must be a ParserState')
-    }
-    return parser(parserState)
   })
 }
 
@@ -90,13 +75,12 @@ export function value (val) {
  */
 export function bind (parser, fun) {
   return parserState => {
-    return invokeParser(parser, parserState).then(newParserState => {
+    return parserState.parse(parser).then(newParserState => {
       if (newParserState.failed) {
         return newParserState
       } else {
-        return invokeParser(
-          fun.call(newParserState.userState, newParserState.value),
-          newParserState)
+        return newParserState.parse(
+          fun.call(newParserState.userState, newParserState.value))
       }
     })
   }
@@ -139,7 +123,7 @@ export function fail (msg = 'parser error', type = 'failure') {
  */
 export function label (parser, msg) {
   return parserState => {
-    return invokeParser(parser, parserState).then(newState => {
+    return parserState.parse(parser).then(newState => {
       if (newState.failed) {
         newState = newState.copy()
         newState.error = new ParserError(newState.error.position,
@@ -242,7 +226,7 @@ export function delay (constructor, ...args) {
  */
 export function log (parser, tag, level = 'log') {
   return parserState => {
-    return invokeParser(parser, parserState).then(newParserState => {
+    return parserState.parse(parser).then(newParserState => {
       console[level](tag + ' :: ', parserState, ' => ', newParserState)
       return newParserState
     })
@@ -304,7 +288,7 @@ export function tag (parser, key) {
  */
 export function lookAhead (parser) {
   return parserState => {
-    return invokeParser(parser, parserState).then(newState => {
+    return parserState.parse(parser).then(newState => {
       newState.offset = parserState.offset
       newState.position = parserState.position
       return newState
@@ -361,6 +345,15 @@ class ParserState {
     this.failed = failed
     this.error = error
   }
+  parse (parser) {
+    return bluebird.resolve(this).then(parserState => {
+      if (typeof parser !== 'function') {
+        throw new Error('Parser needs to be a function, but got ' +
+        parser + ' instead')
+      }
+      return parser(parserState)
+    })
+  }
   copy () {
     return new ParserState(this.value,
                            this.input,
@@ -373,6 +366,11 @@ class ParserState {
   }
 }
 ParserState.prototype.isParserState = true
+
+export function invokeParser (parser, parserState) {
+  console.warn('invokeParser is deprecated. Use parserState.parse() instead.')
+  return parserState.parse(parser)
+}
 
 /**
  * Represents a source location.
